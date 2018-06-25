@@ -1,8 +1,8 @@
 name: amqp
-version: 0.1.0
+version: 0.1.1
 
 description: |
   AMQP 0.9.1 client with RabbitMQ extensions
 
-crystal: 0.20.0
+crystal: 0.25.0
 license: MIT
