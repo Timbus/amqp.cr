@@ -31,7 +31,6 @@ module AMQP
 
     def initialize(@host = "127.0.0.1",
                    @port = 5672,
-                   @tls = false,
                    @username = "guest",
                    @password = "guest",
                    @vhost = "/",
@@ -39,7 +38,8 @@ module AMQP
                    @frame_max = 0_u32,
                    @heartbeat : Time::Span = 0.seconds,
                    @logger = Logger.new(STDOUT),
-                   @log_level : Logger::Severity = Logger::INFO)
+                   @log_level : Logger::Severity = Logger::INFO,
+                   @tls = false)
       @logger.level = @log_level
     end
 
