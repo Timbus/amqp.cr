@@ -1,4 +1,5 @@
 module AMQP::Protocol
+
   # 0      1         3             7                  size+7 size+8
   # +------+---------+-------------+  +------------+  +-----------+
   # | type | channel |     size    |  |  payload   |  | frame-end |
@@ -28,7 +29,8 @@ module AMQP::Protocol
                 UInt8 |
                 UInt16 |
                 UInt32 |
-                UInt64 |
+                Int8 |
+                Int16 |
                 Int32 |
                 Int64 |
                 Float32 |
@@ -37,6 +39,7 @@ module AMQP::Protocol
                 String |
                 Array(Field) |
                 Array(UInt8) |
+                Slice(UInt8) |
                 Time |
                 Hash(String, Field)
 
@@ -164,45 +167,45 @@ module AMQP::Protocol
 
     def encode(io)
       flags = 0_u16
-      flags = flags | FLAG_CONTENT_TYPE unless @content_type.empty?
+      flags = flags | FLAG_CONTENT_TYPE     unless @content_type.empty?
       flags = flags | FLAG_CONTENT_ENCODING unless @content_encoding.empty?
-      flags = flags | FLAG_HEADERS unless @headers.empty?
-      flags = flags | FLAG_DELIVERY_MODE unless @delivery_mode == 0
-      flags = flags | FLAG_PRIORITY unless @priority == 0
-      flags = flags | FLAG_CORRELATION_ID unless @correlation_id.empty?
-      flags = flags | FLAG_REPLY_TO unless @reply_to.empty?
-      flags = flags | FLAG_EXPIRATION unless @expiration.empty?
-      flags = flags | FLAG_MESSAGE_ID unless @message_id.empty?
-      flags = flags | FLAG_TIMESTAMP unless @timestamp.epoch == 0
-      flags = flags | FLAG_TYPE unless @type.empty?
-      flags = flags | FLAG_USER_ID unless @user_id.empty?
-      flags = flags | FLAG_APP_ID unless @app_id.empty?
-      flags = flags | FLAG_RESERVED1 unless @reserved1.empty?
+      flags = flags | FLAG_HEADERS          unless @headers.empty?
+      flags = flags | FLAG_DELIVERY_MODE    unless @delivery_mode == 0
+      flags = flags | FLAG_PRIORITY         unless @priority == 0
+      flags = flags | FLAG_CORRELATION_ID   unless @correlation_id.empty?
+      flags = flags | FLAG_REPLY_TO         unless @reply_to.empty?
+      flags = flags | FLAG_EXPIRATION       unless @expiration.empty?
+      flags = flags | FLAG_MESSAGE_ID       unless @message_id.empty?
+      flags = flags | FLAG_TIMESTAMP        unless @timestamp.epoch == 0
+      flags = flags | FLAG_TYPE             unless @type.empty?
+      flags = flags | FLAG_USER_ID          unless @user_id.empty?
+      flags = flags | FLAG_APP_ID           unless @app_id.empty?
+      flags = flags | FLAG_RESERVED1        unless @reserved1.empty?
 
       io.write_short(flags)
 
-      io.write_shortstr(@content_type) unless @content_type.empty?
+      io.write_shortstr(@content_type)     unless @content_type.empty?
       io.write_shortstr(@content_encoding) unless @content_encoding.empty?
-      io.write_table(@headers) unless @headers.empty?
+      io.write_table(@headers)             unless @headers.empty?
       io.write_octet(@delivery_mode.to_u8) unless @delivery_mode == 0
-      io.write_octet(@priority.to_u8) unless @priority == 0
-      io.write_shortstr(@correlation_id) unless @correlation_id.empty?
-      io.write_shortstr(@reply_to) unless @reply_to.empty?
-      io.write_shortstr(@expiration) unless @expiration.empty?
-      io.write_shortstr(@message_id) unless @message_id.empty?
-      io.write_timestamp(@timestamp) unless @timestamp.epoch == 0
-      io.write_shortstr(@type) unless @type.empty?
-      io.write_shortstr(@user_id) unless @user_id.empty?
-      io.write_shortstr(@app_id) unless @app_id.empty?
-      io.write_shortstr(@reserved1) unless @reserved1.empty?
+      io.write_octet(@priority.to_u8)      unless @priority == 0
+      io.write_shortstr(@correlation_id)   unless @correlation_id.empty?
+      io.write_shortstr(@reply_to)         unless @reply_to.empty?
+      io.write_shortstr(@expiration)       unless @expiration.empty?
+      io.write_shortstr(@message_id)       unless @message_id.empty?
+      io.write_timestamp(@timestamp)       unless @timestamp.epoch == 0
+      io.write_shortstr(@type)             unless @type.empty?
+      io.write_shortstr(@user_id)          unless @user_id.empty?
+      io.write_shortstr(@app_id)           unless @app_id.empty?
+      io.write_shortstr(@reserved1)        unless @reserved1.empty?
     end
   end
 
   abstract class Frame
-    METHOD      =    1_u8
-    HEADERS     =    2_u8
-    BODY        =    3_u8
-    HEARTBEAT   =    8_u8
+    METHOD    = 1_u8
+    HEADERS   = 2_u8
+    BODY      = 3_u8
+    HEARTBEAT = 8_u8
     FINAL_OCTET = 0xCE_u8
 
     @type : UInt8
@@ -276,7 +279,7 @@ module AMQP::Protocol
     def get_payload
       buf = ::IO::Memory.new
       buf_io = IO.new(buf)
-      @method.id.each { |v| buf_io.write_short(v) }
+      @method.id.each {|v| buf_io.write_short(v)}
       @method.encode(buf_io)
       buf.to_s.to_slice
     end
@@ -353,7 +356,7 @@ module AMQP::Protocol
   end
 
   class HeartbeatFrame < Frame
-    def initialize
+    def initialize()
       @channel = 0_u16
       @type = HEARTBEAT
     end
@@ -378,11 +381,12 @@ module AMQP::Protocol
   end
 
   class IO
-    @@bigendian : Bool = begin
-      tmp = 1_u16
-      ptr = pointerof(tmp)
-      ptr[0] == 0_u8 && ptr[1] == 1_u8
-    end
+    @@bigendian : Bool = \
+      begin
+        tmp = 1_u16
+        ptr = pointerof(tmp)
+        ptr[0] == 0_u8 && ptr[1] == 1_u8
+      end
 
     getter eof
 
@@ -390,7 +394,7 @@ module AMQP::Protocol
       @eof = false
     end
 
-    def initialize(@io : ::IO::Buffered)
+    def initialize(@io : Socket)
       @eof = false
     end
 
@@ -422,6 +426,7 @@ module AMQP::Protocol
     def_read(UInt16)
     def_read(UInt32)
     def_read(UInt64)
+    def_read(Int8)
     def_read(Int16)
     def_read(Int32)
     def_read(Int64)
@@ -504,14 +509,19 @@ module AMQP::Protocol
 
       case ty.chr
       when 't'
-        v = read_octet
-        v != 0
+        read_octet != 0_u8
       when 'b'
-        read_octet
+        read_int8
+      when 'B'
+        read_uint8
       when 's'
+        read_int16
+      when 'u'
         read_uint16
       when 'I'
         read_int32
+      when 'i'
+        read_uint32
       when 'l'
         read_int64
       when 'f'
@@ -549,107 +559,122 @@ module AMQP::Protocol
       write(slice)
     end
 
-    def_write(UInt8)
-    def_write(UInt16)
-    def_write(UInt32)
-    def_write(UInt64)
-    def_write(Int16)
-    def_write(Int32)
-    def_write(Int64)
-    def_write(Float32)
-    def_write(Float64)
+     def_write(UInt8)
+     def_write(UInt16)
+     def_write(UInt32)
+     def_write(UInt64)
+     def_write(Int8)
+     def_write(Int16)
+     def_write(Int32)
+     def_write(Int64)
+     def_write(Float32)
+     def_write(Float64)
 
-    def write_octet(v : UInt8)
-      write(v)
-    end
+     def write_octet(v : UInt8)
+       write(v)
+     end
 
-    def write_octet(v : Char)
-      write(v.ord.to_u8)
-    end
+     def write_octet(v : Char)
+       write(v.ord.to_u8)
+     end
 
-    def write_short(v : UInt16)
-      write(v)
-    end
+     def write_short(v : UInt16)
+       write(v)
+     end
 
-    def write_long(v : UInt32)
-      write(v)
-    end
+     def write_long(v : UInt32)
+       write(v)
+     end
 
-    def write_longlong(v : UInt64)
-      write(v)
-    end
+     def write_longlong(v : UInt64)
+       write(v)
+     end
 
-    def write_shortstr(v : String)
-      len = v.bytesize.to_u8
-      if len < v.bytesize
-        raise ContentTooLarge.new
-      end
-      write(len)
-      @io.print(v)
-    end
+     def write_shortstr(v : String)
+       len = v.bytesize.to_u8
+       if len < v.bytesize
+         raise ContentTooLarge.new
+       end
+       write(len)
+       @io.print(v)
+     end
 
-    def write_longstr(v : String)
-      len = v.bytesize.to_u32
-      write(len)
-      @io.print(v)
-    end
+     def write_longstr(v : String)
+       len = v.bytesize.to_u32
+       write(len)
+       @io.print(v)
+     end
 
-    def write_table(table : Table)
-      buf = ::IO::Memory.new
-      io = IO.new(buf)
-      table.each do |key, value|
-        io.write_shortstr(key)
-        io.write_field(value)
-      end
-      write_longstr(buf.to_s)
-    end
+     def write_table(table : Table)
+       buf = ::IO::Memory.new
+       io = IO.new(buf)
+       table.each do |key, value|
+         io.write_shortstr(key)
+         io.write_field(value)
+       end
+       write_longstr(buf.to_s)
+     end
 
-    def write_timestamp(v : Time)
-      write(v.epoch.to_i64)
-    end
+     def write_timestamp(v : Time)
+       write(v.epoch.to_i64)
+     end
 
-    protected def write_field(field)
-      case field
-      when Bool
-        write_octet('t')
-        write_octet(field ? 1_u8 : 0_u8)
-      when UInt8
-        write_octet('b')
-        write(field)
-      when UInt16
-        write_octet('s')
-        write(field)
-      when UInt32
-        write_octet('I')
-        write(field)
-      when UInt64
-        write_octet('l')
-        write(field)
-      when Float32
-        write_octet('f')
-        write(field)
-      when Float64
-        write_octet('d')
-      when String
-        write_octet('S')
-        write_longstr(field)
-      when Array(UInt8)
-        write_octet('x')
-        write(field.size.to_i32)
-        @io.write(Slice.new(field.to_unsafe, field.size))
-      when Array
-        write_octet('A')
-        write(field.size.to_i32)
-        field.each { |v| write_field(v) }
-      when Time
-        write_octet('T')
-        write_timestamp(field)
-      when Hash
-        write_octet('F')
-        write_table(field)
-      else
-        raise FrameError.new("invalid type #{typeof(field)}")
-      end
+     protected def write_field(field)
+       case field
+       when Bool
+         write_octet('t')
+         write_octet(field ? 1_u8 : 0_u8)
+       when Int8
+         write_octet('b')
+         write(field)
+       when UInt8
+         write_octet('B')
+         write(field)
+       when Int16
+         write_octet('s')
+         write(field)
+       when UInt16
+         write_octet('u')
+         write(field)
+       when Int32
+         write_octet('I')
+         write(field)
+       when UInt32
+         write_octet('i')
+         write(field)
+       when Int64
+         write_octet('l')
+         write(field)
+       when Float32
+         write_octet('f')
+         write(field)
+       when Float64
+         write_octet('d')
+       when String
+         write_octet('S')
+         write_longstr(field)
+       when Slice(UInt8)
+         write_octet('x')
+         write(field.size.to_i32)
+         @io.write(Slice.new(field.to_unsafe, field.size))
+       when Array
+         write_octet('A')
+         mem = ::IO::Memory.new
+         io = IO.new(mem)
+         field.each { |v| io.write_field(v) }
+         write(mem.bytesize.to_i32)
+         write mem.to_slice
+       when Time
+         write_octet('T')
+         write_timestamp(field)
+       when Hash
+         write_octet('F')
+         write_table(field)
+       when Nil
+         write_octet('V')
+       else
+         raise FrameError.new("invalid type #{typeof(field)}")
+       end
     end
 
     protected def read_array
@@ -680,9 +705,7 @@ module AMQP::Protocol
     def read_timestamp
       tv_sec = read_int64
       return nil unless tv_sec
-      spec = LibC::Timespec.new
-      spec.tv_sec = tv_sec
-      Time.new(spec)
+      Time.epoch tv_sec
     end
 
     def flush
@@ -692,11 +715,9 @@ module AMQP::Protocol
     protected def read_byte_array
       len = read_int32
       return nil unless len
-      array = Array(UInt8).new(len) { 0_u8 }
-      unless read(Slice.new(array.to_unsafe, len))
-        return nil
-      end
-      array
+      bytes = Bytes.new(len)
+      read(bytes)
+      bytes
     end
 
     private def reverse(slice)
