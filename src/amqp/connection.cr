@@ -15,6 +15,8 @@ module AMQP
     getter username
     # The server password
     getter password
+    # Enable if the server uses tls
+    getter tls
     # Provides the name of the virtual host
     getter vhost
     # Logger to use
@@ -29,6 +31,7 @@ module AMQP
 
     def initialize(@host = "127.0.0.1",
                    @port = 5672,
+                   @tls = false,
                    @username = "guest",
                    @password = "guest",
                    @vhost = "/",
@@ -47,8 +50,8 @@ module AMQP
 
   # The connection class provides methods to establish a network connection to a server.
   class Connection
-    DefaultProduct = "http://github.com/datanoise/amqp.cr"
-    DefaultVersion = "0.1"
+    DefaultProduct      = "http://github.com/datanoise/amqp.cr"
+    DefaultVersion      = "0.1"
     ConnectionChannelID = 0_u16
 
     getter config
@@ -223,10 +226,9 @@ module AMQP
       @broker.on_close { do_close }
     end
 
-    @version_major =  0_u8
-    @version_minor =  0_u8
+    @version_major = 0_u8
+    @version_minor = 0_u8
     @server_properties = Hash(String, AMQP::Protocol::Field).new
-
 
     protected def handshake
       @broker.write_protocol_header
@@ -254,7 +256,7 @@ module AMQP
       tune = @rpc.receive
       assert_type(tune, Protocol::Connection::Tune)
 
-      pick = -> (client : UInt32, server : UInt32) {
+      pick = ->(client : UInt32, server : UInt32) {
         if client == 0 || server == 0
           client > server ? client : server
         else

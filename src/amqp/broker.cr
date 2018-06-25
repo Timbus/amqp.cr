@@ -9,8 +9,15 @@ class AMQP::Broker
 
   getter closed
 
+  @socket : IO::Buffered
+
   def initialize(@config : AMQP::Config)
-    @socket = TCPSocket.new(@config.host, @config.port)
+    tcp_socket = TCPSocket.new(@config.host, @config.port)
+    @socket = if @config.tls
+                OpenSSL::SSL::Socket::Client.new(tcp_socket, OpenSSL::SSL::Context::Client.new)
+              else
+                tcp_socket
+              end
     @socket.sync = true
     @io = Protocol::IO.new(@socket)
     @sends = Timed::TimedChannel(Time).new(1)
@@ -82,7 +89,7 @@ class AMQP::Broker
     end
     @sending = true
 
-    frames.each {|frame| transmit_frame(frame)}
+    frames.each { |frame| transmit_frame(frame) }
   ensure
     @sending = false
   end
