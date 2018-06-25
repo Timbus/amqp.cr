@@ -394,7 +394,7 @@ module AMQP::Protocol
       @eof = false
     end
 
-    def initialize(@io : Socket)
+    def initialize(@io : ::IO::Buffered)
       @eof = false
     end
 
