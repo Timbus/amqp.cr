@@ -224,7 +224,7 @@ module AMQP::Protocol
       io.write_short(@channel)
       payload = get_payload()
       io.write_long(payload.size.to_u32)
-      io.write(payload)
+      io.write(payload) if payload.size > 0
       io.write_octet(FINAL_OCTET)
       io.flush
     end
@@ -548,7 +548,7 @@ module AMQP::Protocol
     end
 
     def write(slice : Slice(UInt8))
-      @io.write(slice)
+      @io.write(slice) if slice.size > 0
     end
 
     def write(v)
