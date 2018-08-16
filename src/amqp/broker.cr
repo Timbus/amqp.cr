@@ -1,4 +1,5 @@
 require "socket"
+require "openssl"
 require "./protocol"
 require "./spec091"
 require "./timed_channel"
@@ -9,16 +10,19 @@ class AMQP::Broker
 
   getter closed
 
-  @socket : IO::Buffered
+  @socket : IO
 
   def initialize(@config : AMQP::Config)
     tcp_socket = TCPSocket.new(@config.host, @config.port)
-    @socket = if @config.tls
+    socket = if @config.tls
                 OpenSSL::SSL::Socket::Client.new(tcp_socket, OpenSSL::SSL::Context::Client.new)
               else
                 tcp_socket
               end
-    @socket.sync = true
+    if socket.responds_to?(:'sync=')
+      socket.sync = true
+    end
+    @socket = socket
     @io = Protocol::IO.new(@socket)
     @sends = Timed::TimedChannel(Time).new(1)
     @closed = false
