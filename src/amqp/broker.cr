@@ -15,11 +15,11 @@ class AMQP::Broker
   def initialize(@config : AMQP::Config)
     tcp_socket = TCPSocket.new(@config.host, @config.port)
     socket = if @config.tls
-                OpenSSL::SSL::Socket::Client.new(tcp_socket, OpenSSL::SSL::Context::Client.new)
-              else
-                tcp_socket
-              end
-    if socket.responds_to?(:'sync=')
+               OpenSSL::SSL::Socket::Client.new(tcp_socket, OpenSSL::SSL::Context::Client.new)
+             else
+               tcp_socket
+             end
+    if socket.responds_to?(:"sync=")
       socket.sync = true
     end
     @socket = socket
