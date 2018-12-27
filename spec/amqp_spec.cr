@@ -6,18 +6,18 @@ describe AMQP::Connection do
     AMQP::Connection.start do |conn|
       ch = conn.channel
       headers = AMQP::Protocol::Table{
-        "bool" => true,
-        "int8" => Int8::MAX,
-        "uint8" => UInt8::MAX,
-        "int16" => Int16::MAX,
-        "uint16" => UInt16::MAX,
-        "int32" => Int32::MAX,
-        "uint32" => UInt32::MAX,
-        "int64" => Int64::MAX,
+        "bool"    => true,
+        "int8"    => Int8::MAX,
+        "uint8"   => UInt8::MAX,
+        "int16"   => Int16::MAX,
+        "uint16"  => UInt16::MAX,
+        "int32"   => Int32::MAX,
+        "uint32"  => UInt32::MAX,
+        "int64"   => Int64::MAX,
         "float32" => 0.0_f32,
-        #"float64" => 0.0_f64,
+        # "float64" => 0.0_f64,
         "string" => "a" * 257,
-        "array" => [
+        "array"  => [
           true,
           Int8::MAX,
           UInt8::MAX,
@@ -27,17 +27,17 @@ describe AMQP::Connection do
           UInt32::MAX,
           Int64::MAX,
           0.0_f32,
-          #0.0_f64,
+          # 0.0_f64,
           "a" * 257,
           "aaaa".to_slice,
-          Time.epoch(Time.utc_now.epoch),
-          AMQP::Protocol::Table{ "key" => "value" },
+          Time.unix(Time.utc_now.to_unix),
+          AMQP::Protocol::Table{"key" => "value"},
           nil,
         ] of AMQP::Protocol::Field,
         "byte_array" => "aaaa".to_slice,
-        "time" => Time.epoch(Time.utc_now.epoch),
-        "hash" => AMQP::Protocol::Table{ "key" => "value" },
-        "nil" => nil,
+        "time"       => Time.unix(Time.utc_now.to_unix),
+        "hash"       => AMQP::Protocol::Table{"key" => "value"},
+        "nil"        => nil,
       }
       msg = AMQP::Message.new("props", AMQP::Protocol::Properties.new(headers: headers))
       q = ch.queue("", auto_delete: false, durable: true, exclusive: false, passive: false)
